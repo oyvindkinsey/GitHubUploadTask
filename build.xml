@@ -1,52 +1,58 @@
 <project name="GitHubUploadTask" default="dist" basedir=".">
 	<property file="build.properties"/>
-    <description>
-        A task for uploading files to GitHub
-    </description>
-  <!-- set global properties for this build -->
-  <property name="src" location="src"/>
-  <property name="build" location="build"/>
-  <property name="dist"  location="dist"/>
-
-  	<path id="githubhuploadtask.classpath">
+	<!-- to store your token, create this file -->
+	<property file="build.secret.properties"/>
+	
+	<description>
+		A task for uploading files to GitHub
+	</description>
+	
+	<!-- set global properties for this build -->
+	<property name="src" location="src"/>
+	<property name="build" location="build"/>
+	<property name="dist"  location="dist"/>
+	
+	<!-- include the upload task -->
+	<path id="githubhuploadtask.classpath">
 		<pathelement location="."/>
 		<fileset dir="dist/lib">
 			<include name="**/*.jar"/>
 		</fileset>
 	</path>
-  <taskdef name="upload" classname="no.kinsey.ant.GitHubUploadTask" classpathref="githubhuploadtask.classpath" loaderref="githubhuploadtask.classpath.loader" />
-	
-  <target name="init">
-    <!-- Create the time stamp -->
-    <tstamp/>
-    <!-- Create the build directory structure used by compile -->
-    <mkdir dir="${build}"/>
-  </target>
+	<taskdef name="upload" classname="no.kinsey.ant.GitHubUploadTask" classpathref="githubhuploadtask.classpath" loaderref="githubhuploadtask.classpath.loader" />
+		
+	<target name="init">
+		<!-- Create the time stamp -->
+		<tstamp/>
+		<!-- Create the build directory structure used by compile -->
+		<mkdir dir="${build}"/>
+	</target>
 
-  <target name="compile" depends="init"
-        description="compile the source " >
-    <!-- Compile the java code from ${src} into ${build} -->
-    <javac srcdir="${src}" destdir="${build}"/>
-  </target>
+	<target name="compile" depends="init"
+			description="compile the source " >
+		<!-- Compile the java code from ${src} into ${build} -->
+		<javac srcdir="${src}" destdir="${build}"/>
+	</target>
 
-  <target name="dist" depends="compile"
-        description="generate the distribution" >
-    <!-- Create the distribution directory -->
-    <mkdir dir="${dist}/lib"/>
+	<target name="dist" depends="compile"
+			description="generate the distribution" >
+		<!-- Create the distribution directory -->
+		<mkdir dir="${dist}/lib"/>
+		<!-- Put everything in ${build} into the MyProject-${DSTAMP}.jar file -->
+		<jar jarfile="${dist}/lib/GitHubUploadTask-${DSTAMP}.jar" basedir="${build}"/>
+		<zip destfile="${dist}/GitHubUploadTask-${DSTAMP}.zip" basedir="${dist}/lib/"/>
+		<upload user="${github.user}" repo="${github.repo}" username="${github.username}" token="${github.token}" description="[is not sent]" path="${dist}/GitHubUploadTask-${DSTAMP}.zip" />
+	</target>
 
-    <!-- Put everything in ${build} into the MyProject-${DSTAMP}.jar file -->
-    <jar jarfile="${dist}/lib/GitHubUploadTask-${DSTAMP}.jar" basedir="${build}"/>
-  </target>
+	<target name="clean"
+			description="clean up" >
+		<!-- Delete the ${build} and ${dist} directory trees -->
+		<delete dir="${build}"/>
+		<delete dir="${dist}"/>
+	</target>
 
-  <target name="clean"
-        description="clean up" >
-    <!-- Delete the ${build} and ${dist} directory trees -->
-    <delete dir="${build}"/>
-    <delete dir="${dist}"/>
-  </target>
-  
-  <target name="test"
-		description="test the upload">
-	<upload user="${github.user}" repo="${github.repo}" username="${github.username}" token="${github.token}" description="" path="${basedir}/file.zip" />
-  </target>
+	<target name="test"
+			description="test the upload">
+		<upload user="${github.user}" repo="${github.repo}" username="${github.username}" token="${github.token}" description="just a test" path="${basedir}/file.zip" />
+	</target>
 </project>
