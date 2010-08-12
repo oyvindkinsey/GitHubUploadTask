@@ -26,6 +26,8 @@ import org.w3c.dom.*;
 
 
 public class GitHubUploadTask extends Task {
+	// Inspiration for this comes from http://github.com/tekkub/github-gem/blob/master/lib/commands/commands.rb
+	
 	private String user;
 	private String repo;
 	private String username;
@@ -77,19 +79,18 @@ public class GitHubUploadTask extends Task {
 	}
 	
 	Boolean UploadToS3(File file, String key, String policy, String accesskeyid, String signature, String acl) {
-		// code from http://www.jguru.com/faq/view.jsp?EID=62798
 		String postUrl = "http://github.s3.amazonaws.com/";
 		System.out.println("Posting to url " + postUrl);
 		
 		HttpURLConnection conn = null;
-		
-		int bytesRead, bytesAvailable, bufferSize;
+		int bytesRead, bytesAvailable, bufferSize, maxBufferSize = 1 * 1024 * 1024;;
 		byte[] buffer;
-		int maxBufferSize = 1 * 1024 * 1024;
+		
 		try {
-			// open the file
+			// Open the file
 			FileInputStream fileInputStream = new FileInputStream(file);
-			// prepare the http connection
+			
+			// Prepare the http connection
 			URL url = new URL(postUrl);
 			conn = (HttpURLConnection) url.openConnection();
 			conn.setDoInput(true);
@@ -99,11 +100,11 @@ public class GitHubUploadTask extends Task {
 			conn.setRequestProperty("Connection", "Keep-Alive");
 			conn.setRequestProperty("Content-Type", "multipart/form-data;boundary=*****");
 			
-			
-			DataOutputStream dos =  new DataOutputStream( conn.getOutputStream() );
+			DataOutputStream dos =  new DataOutputStream(conn.getOutputStream());
 			String header = "--*****\r\n";
 			String footer = "--*****--\r\n";
-			// output the form data
+			
+			// Write the form data
 			WriteFormField(dos, header, "Filename", file.getName());
 			WriteFormField(dos, header, "key", key);
 			WriteFormField(dos, header, "policy", policy);
@@ -115,12 +116,11 @@ public class GitHubUploadTask extends Task {
 			dos.writeBytes(header);
 			dos.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"" + file.getName() +"\"\r\n");
 			dos.writeBytes("\r\n");
-			// ouput the file
-			// create a buffer of maximum size
+			
+			// Write the file data
 			bytesAvailable = fileInputStream.available();
 			bufferSize = Math.min(bytesAvailable, maxBufferSize);
 			buffer = new byte[bufferSize];
-			// read file and write it into form...
 			bytesRead = fileInputStream.read(buffer, 0, bufferSize);
 			while (bytesRead > 0) {
 				dos.write(buffer, 0, bufferSize);
@@ -128,31 +128,30 @@ public class GitHubUploadTask extends Task {
 				bufferSize = Math.min(bytesAvailable, maxBufferSize);
 				bytesRead = fileInputStream.read(buffer, 0, bufferSize);
 			}
-			// send multipart form data necesssary after file data...
 			dos.writeBytes("\r\n");
 			dos.writeBytes(footer);
-			// close streams
+			
+			// Close streams
 			fileInputStream.close();
 			dos.flush();
 			dos.close();
 		}
 		catch (IOException ioe) {
-			System.out.println("From ServletCom CLIENT REQUEST:"+ioe);
+			System.out.println(ioe);
 			return false;
 		}
-		// read the response
+		
+		// Read the response
 		try {
-			
-			DataInputStream inStream = new DataInputStream ( conn.getInputStream() );
+			DataInputStream inStream = new DataInputStream(conn.getInputStream());
 			String str;
-			while (( str = inStream.readLine()) != null){
+			while ((str = inStream.readLine()) != null){
 				System.out.println("Server response is: " + str);
-				System.out.println("");
 			}
 			inStream.close();
 		}
 		catch (IOException ioex){
-			System.out.println("From (ServerResponse): "+ioex);
+			System.out.println(ioex);
 			return false;
 		}
 		return true;
@@ -160,7 +159,8 @@ public class GitHubUploadTask extends Task {
 	
 	public void execute() throws BuildException {
 		System.out.println("Preparing to upload " + path);
-		//get the file information
+		
+		// Get the file information
 		File file = new File(path);
 		if (!file.exists()) {
 			throw new BuildException("The file " + path + " does not exist");
@@ -170,10 +170,9 @@ public class GitHubUploadTask extends Task {
 		if (xml != null) {
 			NodeList list = xml.getElementsByTagName("*");
 			String prefix = "", accesskeyid = "", bucket = "", https = "", acl = "", policy = "", mimeType = "", signature = "", redirect = "", expirationdate = "";
-			// retrieve values
 			
+			// Extract the data
 			for (int i=0; i<list.getLength(); i++) {
-				// Get element
 				Element element = (Element)list.item(i);
 				String nodeName = element.getNodeName();
 				String value = element.getFirstChild().getNodeValue();
@@ -183,7 +182,7 @@ public class GitHubUploadTask extends Task {
 				}else if (nodeName =="accesskeyid") {
 					accesskeyid = value;
 				}else if (nodeName =="bucket") {
-					bucket = element.getNodeValue();
+					bucket = value;
 				}else if (nodeName =="https") {
 					https = value;
 				}else if (nodeName =="acl") {
@@ -201,7 +200,7 @@ public class GitHubUploadTask extends Task {
 				}
 			}
 						
-			// upload file
+			// Upload file
 			if (UploadToS3(file, prefix + file.getName(), policy, accesskeyid, signature, acl)) {
 				System.out.println("File uploaded successfully");
 			} else{
@@ -212,7 +211,7 @@ public class GitHubUploadTask extends Task {
 		}
 	}
 
-	
+	// Property setters
 	public void setUser(String user) {
 		this.user = user;
 	}
